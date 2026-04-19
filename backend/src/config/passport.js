@@ -28,7 +28,7 @@ passport.use(new GoogleStrategy({
         
         await db.query(
           `INSERT INTO users (id, organization_id, email, first_name, last_name, role, is_verified, is_active) 
-           VALUES ($1, $2, $3, $4, $5, $6, 1, 1)`,
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE, TRUE)`,
           [userId, orgId, email.toLowerCase(), firstName, lastName, 'member']
         );
         
