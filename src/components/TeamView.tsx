@@ -43,6 +43,17 @@ export default function TeamView() {
     m.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.createInvitation(inviteData);
+      const link = `${window.location.origin}/register?invite=${res.token}`;
+      setGeneratedLink(link);
+    } catch (err) {
+      console.error('Invite failed', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-12">
@@ -53,7 +64,92 @@ export default function TeamView() {
 
   return (
     <div className="p-12 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
-      {/* Invite Modal Code ... (same as before) */}
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-3xl p-8 max-w-md w-full custom-shadow relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-8">
+               <button onClick={() => { setShowInviteModal(false); setGeneratedLink(''); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                 <Plus size={24} className="rotate-45" />
+               </button>
+            </div>
+
+            <div className="mb-8">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <UserPlus className="text-primary" size={24} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">Invite Member</h3>
+              <p className="text-slate-500 text-sm mt-1">Growth starts with the right people.</p>
+            </div>
+
+            {generatedLink ? (
+              <div className="space-y-4 animate-in zoom-in-95 duration-300">
+                <div className="p-4 bg-green-50 border border-green-100 rounded-2xl">
+                  <p className="text-green-800 text-xs font-bold uppercase tracking-widest mb-2">Invitation Link Generated</p>
+                  <div className="flex gap-2">
+                    <input 
+                      readOnly 
+                      value={generatedLink}
+                      className="bg-white border border-green-200 rounded-xl px-3 py-2 text-xs flex-1 font-mono"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedLink);
+                        alert('Copied to clipboard!');
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-all"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setShowInviteModal(false); setGeneratedLink(''); }}
+                  className="w-full py-4 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleInvite} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Email Address</label>
+                  <input 
+                    type="email" 
+                    required 
+                    placeholder="teammate@company.com"
+                    value={inviteData.email}
+                    onChange={e => setInviteData({...inviteData, email: e.target.value})}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Access Role</label>
+                  <select 
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all outline-none appearance-none"
+                    value={inviteData.role}
+                    onChange={e => setInviteData({...inviteData, role: e.target.value})}
+                  >
+                    <option value="member">Member (Create & Edit)</option>
+                    <option value="viewer">Viewer (Read Only)</option>
+                    <option value="admin">Admin (Full Access)</option>
+                  </select>
+                </div>
+                <button 
+                  type="submit"
+                  className="w-full py-4 rounded-2xl font-bold bg-primary text-white hover:bg-primary-container hover:shadow-lg hover:shadow-primary/20 transition-all transform active:scale-95"
+                >
+                  Generate Invitation
+                </button>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
 
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
