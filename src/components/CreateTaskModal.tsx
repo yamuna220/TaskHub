@@ -13,13 +13,27 @@ interface CreateTaskModalProps {
 export default function CreateTaskModal({ isOpen, onClose, onTaskCreated, user }: CreateTaskModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [team, setTeam] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     status: 'pending',
     priority: 'medium',
+    assigned_to: '',
     due_date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
   });
+
+  useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const data = await api.getUsers();
+        setTeam(data);
+      } catch (err) {
+        console.error('Failed to load team', err);
+      }
+    };
+    fetchTeam();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +53,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated, user }
         description: '',
         status: 'pending',
         priority: 'medium',
+        assigned_to: '',
         due_date: new Date().toISOString().split('T')[0],
       });
     } catch (err: any) {
@@ -126,7 +141,7 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated, user }
                         <Tag className="text-slate-300 group-focus-within:text-primary transition-colors" size={16} />
                       </div>
                       <select
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-xl text-sm font-bold text-slate-700 appearance-none focus:ring-2 focus:ring-primary/20 transition-all"
+                        className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-xl text-sm font-bold text-slate-700 appearance-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                         value={formData.priority}
                         onChange={e => setFormData({ ...formData, priority: e.target.value })}
                       >
@@ -139,7 +154,27 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated, user }
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Due Date</label>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Assign To</label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                        <User className="text-slate-300 group-focus-within:text-primary transition-colors" size={16} />
+                      </div>
+                      <select
+                        className="w-full pl-10 pr-4 py-2.5 bg-surface-container-low border-none rounded-xl text-sm font-bold text-slate-700 appearance-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                        value={formData.assigned_to}
+                        onChange={e => setFormData({ ...formData, assigned_to: e.target.value })}
+                      >
+                        <option value="">Unassigned</option>
+                        {team.map(m => (
+                          <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Due Date</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
                         <Calendar className="text-slate-300 group-focus-within:text-primary transition-colors" size={16} />
@@ -152,7 +187,6 @@ export default function CreateTaskModal({ isOpen, onClose, onTaskCreated, user }
                       />
                     </div>
                   </div>
-                </div>
               </div>
 
               <div className="pt-2">
