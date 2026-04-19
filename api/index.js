@@ -1,3 +1,4 @@
+const express = require('express');
 const app = require('../backend/src/app');
 const initDb = require('../backend/src/config/initDb');
 
