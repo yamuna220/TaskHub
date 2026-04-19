@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=task_manager
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - JWT_SECRET=your_super_secret_key_change_this
+      - JWT_EXPIRY=1h
+      - JWT_REFRESH_SECRET=your_refresh_secret
+      - JWT_REFRESH_EXPIRY=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - task-network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=task_manager
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - task-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
+    networks:
+      - task-network
+
+volumes:
+  postgres_data:
+
+networks:
+  task-network:
+    driver: bridge
