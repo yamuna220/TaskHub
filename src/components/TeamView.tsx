@@ -13,6 +13,31 @@ export default function TeamView() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const data = await api.getUsers();
+        const mappedMembers: TeamMember[] = data.map((u: any) => ({
+          id: u.id,
+          name: `${u.first_name} ${u.last_name || ''}`,
+          role: u.role,
+          email: u.email,
+          status: u.is_active ? 'online' : 'offline',
+          lastActive: u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never',
+          activeTasks: 0, // Simplified for now
+          initials: (u.first_name?.[0] || '') + (u.last_name?.[0] || ''),
+          performance: 100
+        }));
+        setMembers(mappedMembers);
+      } catch (err) {
+        console.error('Failed to fetch team', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTeam();
+  }, []);
+
   const filteredMembers = members.filter(m => 
     m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     m.email.toLowerCase().includes(searchQuery.toLowerCase())
