@@ -140,3 +140,16 @@ CREATE INDEX IF NOT EXISTS idx_tasks_org_id ON tasks(organization_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_org_id ON audit_logs(organization_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+
+-- Login History Table
+CREATE TABLE IF NOT EXISTS login_history (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    success BOOLEAN NOT NULL,
+    failure_reason TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_history_user_id ON login_history(user_id);

@@ -155,8 +155,10 @@ exports.login = async (req, res) => {
 
     const isMatch = await bcryptjs.compare(password, user.password_hash);
     if (!isMatch) {
-      await db.query('INSERT INTO login_history (id, user_id, ip_address, user_agent, success, failure_reason) VALUES ($1, $2, $3, $4, FALSE, $5)',
-        [uuidv4(), user.id, ipAddress, userAgent, 'Invalid password']);
+      try {
+        await db.query('INSERT INTO login_history (id, user_id, ip_address, user_agent, success, failure_reason) VALUES ($1, $2, $3, $4, FALSE, $5)',
+          [uuidv4(), user.id, ipAddress, userAgent, 'Invalid password']);
+      } catch (e) { console.error('History log failed', e); }
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -170,8 +172,10 @@ exports.login = async (req, res) => {
 
     // Update login stats
     await db.query('UPDATE users SET last_login = CURRENT_TIMESTAMP, login_count = login_count + 1 WHERE id = $1', [user.id]);
-    await db.query('INSERT INTO login_history (id, user_id, ip_address, user_agent, success) VALUES ($1, $2, $3, $4, TRUE)',
-        [uuidv4(), user.id, ipAddress, userAgent]);
+    try {
+      await db.query('INSERT INTO login_history (id, user_id, ip_address, user_agent, success) VALUES ($1, $2, $3, $4, TRUE)',
+          [uuidv4(), user.id, ipAddress, userAgent]);
+    } catch (e) { console.error('History log failed', e); }
 
     res.json({
       token,

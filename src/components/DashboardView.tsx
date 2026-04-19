@@ -34,7 +34,8 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const tasks = await api.getTasks();
+        const result = await api.getTasks();
+        const tasks = Array.isArray(result) ? result : [];
         const total = tasks.length;
         
         const isDone = (s: string) => s?.toLowerCase() === 'done' || s?.toLowerCase() === 'completed';
