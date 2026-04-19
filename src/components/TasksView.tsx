@@ -29,6 +29,7 @@ export default function TasksView({ onTaskClick, onNewTask, user }: TasksViewPro
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   useEffect(() => {
     const fetchTasks = async () => {
