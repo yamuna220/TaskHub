@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const { randomUUID: uuidv4 } = require('crypto');
+const emailService = require('../services/emailService');
 
 exports.createInvitation = async (req, res) => {
   const { email, role } = req.body;
@@ -8,10 +9,21 @@ exports.createInvitation = async (req, res) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
   try {
+    // Get organization name
+    const orgResult = await db.query('SELECT name FROM organizations WHERE id = $1', [organizationId]);
+    const orgName = orgResult.rows[0]?.name || 'a workspace';
+
     const result = await db.query(
       'INSERT INTO invitations (organization_id, email, role, token, expires_at) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [organizationId, email, role || 'member', token, expiresAt]
     );
+
+    // Send the email automatically
+    try {
+      await emailService.sendInvitationEmail(email, token, orgName);
+    } catch (mailErr) {
+      console.error('Mail failed but invitation created', mailErr);
+    }
 
     res.status(201).json(result.rows[0]);
   } catch (err) {

@@ -143,6 +143,32 @@ class EmailService {
       html: htmlContent
     });
   }
+
+  async sendInvitationEmail(email, token, orgName) {
+    const inviteLink = `${process.env.FRONTEND_URL}/register?invite=${token}`;
+    const htmlContent = `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+        <div style="background: #4f46e5; padding: 40px; text-align: center; border-radius: 16px 16px 0 0;">
+           <h1 style="color: white; margin: 0;">You're Invited! 🚀</h1>
+        </div>
+        <div style="background: white; padding: 40px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 16px 16px;">
+          <p>Hi there,</p>
+          <p>You have been invited to join <strong>${orgName}</strong> on TaskHub Pro — the ultimate platform for team performance.</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${inviteLink}" style="background: #4f46e5; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Accept Invitation</a>
+          </div>
+          <p style="color: #64748b; font-size: 13px;">If the button doesn't work, copy and paste this link: <br/> ${inviteLink}</p>
+        </div>
+      </div>
+    `;
+
+    return this.transporter.sendMail({
+      from: `"${process.env.SMTP_FROM_NAME || 'TaskHub Pro'}" <${process.env.SMTP_FROM_EMAIL || 'no-reply@taskhub.pro'}>`,
+      to: email,
+      subject: `Invite: Join ${orgName} on TaskHub Pro`,
+      html: htmlContent
+    });
+  }
 }
 
 module.exports = new EmailService();
