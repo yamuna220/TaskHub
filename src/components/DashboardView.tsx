@@ -23,6 +23,12 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
     { label: 'In Progress', value: '0', change: '...', trend: 'neutral', icon: Clock, color: 'amber' },
     { label: 'Pending', value: '0', change: '...', trend: 'neutral', icon: AlertTriangle, color: 'error' },
   ]);
+  const [kanbanColumns, setKanbanColumns] = useState([
+    { title: 'To Do', count: 0, color: 'slate', tasks: [] },
+    { title: 'In Progress', count: 0, color: 'amber', tasks: [] },
+    { title: 'Done', count: 0, color: 'green', tasks: [] }
+  ]);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,15 +36,37 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
       try {
         const tasks = await api.getTasks();
         const total = tasks.length;
-        const completed = tasks.filter((t: any) => t.status === 'completed').length;
-        const inProgress = tasks.filter((t: any) => t.status === 'in_progress').length;
-        const pending = tasks.filter((t: any) => t.status === 'pending').length;
+        const completed = tasks.filter((t: any) => t.status === 'completed' || t.status === 'Done').length;
+        const inProgress = tasks.filter((t: any) => t.status === 'in_progress' || t.status === 'In Progress').length;
+        const pending = tasks.filter((t: any) => t.status === 'pending' || t.status === 'To Do').length;
 
         setStats([
           { label: 'Total Tasks', value: total.toString(), change: '+5%', trend: 'up', icon: ListTodo, color: 'primary' },
           { label: 'Completed', value: completed.toString(), change: 'Steady', trend: 'neutral', icon: CheckCircle2, color: 'green' },
           { label: 'In Progress', value: inProgress.toString(), change: '+2%', trend: 'up', icon: Clock, color: 'amber' },
           { label: 'Pending', value: pending.toString(), change: '-1%', trend: 'down', icon: AlertTriangle, color: 'error' },
+        ]);
+
+        // Dynamically update Kanban columns
+        setKanbanColumns([
+          { 
+            title: 'To Do', 
+            count: pending, 
+            color: 'slate', 
+            tasks: tasks.filter((t: any) => t.status === 'pending' || t.status === 'To Do') 
+          },
+          { 
+            title: 'In Progress', 
+            count: inProgress, 
+            color: 'amber', 
+            tasks: tasks.filter((t: any) => t.status === 'in_progress' || t.status === 'In Progress') 
+          },
+          { 
+            title: 'Done', 
+            count: completed, 
+            color: 'green', 
+            tasks: tasks.filter((t: any) => t.status === 'completed' || t.status === 'Done') 
+          }
         ]);
       } catch (err) {
         console.error('Failed to fetch dashboard stats', err);
@@ -56,12 +84,6 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
       </div>
     );
   }
-
-  const kanbanColumns = [
-    { title: 'To Do', count: 0, color: 'slate', tasks: [] },
-    { title: 'In Progress', count: 0, color: 'amber', tasks: [] },
-    { title: 'Done', count: 0, color: 'green', tasks: [] }
-  ];
 
   const activity: any[] = [];
 

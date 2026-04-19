@@ -31,7 +31,7 @@ exports.register = async (req, res) => {
       : error.details[0].message 
   });
 
-  const { email, password, firstName, lastName, organizationName, organizationDescription, role } = req.body;
+  const { email, password, firstName, lastName, organizationName, organizationDescription, role, inviteToken } = req.body;
 
   try {
     const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
@@ -39,20 +39,41 @@ exports.register = async (req, res) => {
 
     const passwordHash = await bcryptjs.hash(password, 10);
     const userId = uuidv4();
-    const orgId = uuidv4(); 
     const verificationToken = uuidv4();
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await db.query('BEGIN');
 
-    // Create org
-    await db.query('INSERT INTO organizations (id, name, description) VALUES ($1, $2, $3)', [orgId, organizationName || `${firstName}'s Workspace`, organizationDescription]);
+    let orgId;
+    let finalRole = role || 'admin';
+
+    if (inviteToken) {
+      const inviteResult = await db.query(
+        'SELECT organization_id, role FROM invitations WHERE token = $1 AND is_accepted = FALSE AND expires_at > CURRENT_TIMESTAMP',
+        [inviteToken]
+      );
+
+      if (inviteResult.rowCount === 0) {
+        await db.query('ROLLBACK');
+        return res.status(400).json({ error: 'Invalid or expired invitation' });
+      }
+
+      orgId = inviteResult.rows[0].organization_id;
+      finalRole = inviteResult.rows[0].role;
+
+      // Mark invite as used
+      await db.query('UPDATE invitations SET is_accepted = TRUE WHERE token = $1', [inviteToken]);
+    } else {
+      // Create new org for the admin
+      orgId = uuidv4();
+      await db.query('INSERT INTO organizations (id, name, description) VALUES ($1, $2, $3)', [orgId, organizationName || `${firstName}'s Workspace`, organizationDescription]);
+    }
 
     // Create user (Auto-verify for local dev/demo)
     await db.query(
       `INSERT INTO users (id, organization_id, email, password_hash, first_name, last_name, role, is_verified, is_active, verification_token, verification_token_expiry) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9)`,
-      [userId, orgId, email.toLowerCase(), passwordHash, firstName, lastName, role || 'admin', verificationToken, tokenExpiry]
+      [userId, orgId, email.toLowerCase(), passwordHash, firstName, lastName, finalRole, verificationToken, tokenExpiry]
     );
 
     await db.query('COMMIT');

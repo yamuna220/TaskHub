@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -11,9 +12,11 @@ import {
   Clock,
   AlertCircle,
   MoreVertical,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 import { Task } from '../types';
+import { api } from '../lib/api';
 
 interface TaskDetailModalProps {
   task: Task | null;
@@ -21,6 +24,46 @@ interface TaskDetailModalProps {
 }
 
 export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (task) {
+      fetchComments();
+    }
+  }, [task]);
+
+  const fetchComments = async () => {
+    if (!task) return;
+    setLoadingComments(true);
+    try {
+      const data = await api.getComments(task.id);
+      setComments(data);
+    } catch (err) {
+      console.error('Failed to fetch comments', err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleSendComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!task || !newComment.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await api.addComment(task.id, newComment);
+      setNewComment('');
+      fetchComments();
+    } catch (err) {
+      console.error('Failed to add comment', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!task) return null;
 
   return (
@@ -72,62 +115,47 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
 
               <section className="space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                  <Paperclip size={14} />
-                  Attachments (2)
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-xl border border-slate-100 flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-primary">
-                      <Tag size={20} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">schema_v2.pdf</p>
-                      <p className="text-[10px] text-slate-400">2.4 MB</p>
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl border border-slate-100 flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition-colors">
-                    <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-                      <Tag size={20} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">mockups.fig</p>
-                      <p className="text-[10px] text-slate-400">14.8 MB</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <MessageSquare size={14} />
-                  Comments (3)
+                  Comments ({comments.length})
                 </h3>
                 <div className="space-y-6">
-                  {[
-                    { user: 'Sarah K.', time: '2 hours ago', text: 'I have updated the isolation logic to include the new edge cases we discussed in the standup.', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAdaEcczLA0VbO3o7FoJi4CSZZbDJZ2u55lUJEKPk78LDF4Xonvi29yt4_bd7RK8aZtAlKMXkTiNSwnc4N0lxsNKExCil2xcVqEpBhKOAD7bXHGLDJ112t7K_PNGuCUnnMc5A4bvg6V_GlJ9wxSJQhwMYFdHBZjV5O0xNc6s-OytPeyZd8ZLvKeQbl04BwcJL8Zg8ss81N1sQbSKAUqj8OtrEMZ-QotIQ7YqlhjJpulcMZyIMGHoYCrGg5CCLgwzByLBdudQ9-RlI4b' },
-                    { user: 'Alex Rivera', time: '1 hour ago', text: 'Looks good, I will review the PR shortly.', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFqDzu6LyLIbT0fPTQP8Ovox64UgLINFPGfR2oP_iXaguZ9BRSeR1RUiaBIDF7O0SlK_TWoXS-_97EOc2bmq7nC9h037NWodpkr-kw9ESVfcfl1hiUrjv3qJfgE4CwaB4tHJR4czKul9CtmMtMXHJ5WtW3HikzA-lIBDV9_HNR3pOkLRfsI8AJ0PgUbU_a6sli-O1cBX_0c9noqf8_VtGxRlzXhD2tm0DN1YhrZQWIOIJ6MmfAmmWd_CHeEuKggXIokisp304D041t' }
-                  ].map((comment, i) => (
+                  {loadingComments ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="animate-spin text-slate-300" />
+                    </div>
+                  ) : comments.length > 0 ? comments.map((comment, i) => (
                     <div key={i} className="flex gap-4">
-                      <img alt={comment.user} className="w-8 h-8 rounded-full object-cover" src={comment.avatar} referrerPolicy="no-referrer" />
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                        {comment.first_name[0]}{comment.last_name ? comment.last_name[0] : ''}
+                      </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-slate-900">{comment.user}</span>
-                          <span className="text-[10px] text-slate-400">{comment.time}</span>
+                          <span className="text-xs font-bold text-slate-900">{comment.first_name} {comment.last_name}</span>
+                          <span className="text-[10px] text-slate-400">{new Date(comment.created_at).toLocaleString()}</span>
                         </div>
-                        <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-2xl rounded-tl-none">{comment.text}</p>
+                        <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-2xl rounded-tl-none">{comment.content}</p>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-sm text-slate-400 italic py-2">No comments yet. Be the first to start the conversation!</p>
+                  )}
                 </div>
-                <div className="relative mt-6">
+                <form className="relative mt-6" onSubmit={handleSendComment}>
                   <input 
                     className="w-full bg-surface-container-low border-none rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-primary/20" 
                     placeholder="Write a comment..." 
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    disabled={submitting}
                   />
-                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary text-white rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all">
-                    <Send size={16} />
+                  <button 
+                    type="submit"
+                    disabled={submitting || !newComment.trim()}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-primary text-white rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                  >
+                    {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                   </button>
-                </div>
+                </form>
               </section>
             </div>
 
@@ -137,12 +165,12 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</label>
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
-                    task.status === 'In Progress' ? 'bg-indigo-50 border-indigo-100 text-primary' :
+                    task.status === 'In Progress' || task.status === 'in_progress' ? 'bg-indigo-50 border-indigo-100 text-primary' :
                     task.status === 'Review' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                    task.status === 'Done' ? 'bg-green-50 border-green-100 text-green-700' :
+                    task.status === 'Done' || task.status === 'completed' ? 'bg-green-50 border-green-100 text-green-700' :
                     'bg-white border-slate-100 text-slate-600'
                   }`}>
-                    {task.status === 'Done' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                    {task.status === 'Done' || task.status === 'completed' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
                     <span className="text-sm font-bold">{task.status}</span>
                   </div>
                 </div>
@@ -162,14 +190,10 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Assignee</label>
                   <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100">
-                    {task.assignee.avatar ? (
-                      <img alt={task.assignee.name} className="w-8 h-8 rounded-lg object-cover" src={task.assignee.avatar} referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                        {task.assignee.name[0]}
-                      </div>
-                    )}
-                    <span className="text-sm font-bold text-slate-900">{task.assignee.name}</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                      {task.assignee?.name?.[0] || 'U'}
+                    </div>
+                    <span className="text-sm font-bold text-slate-900">{task.assignee?.name || 'Unassigned'}</span>
                   </div>
                 </div>
 
@@ -177,7 +201,7 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Due Date</label>
                   <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100">
                     <Calendar size={18} className="text-slate-400" />
-                    <span className="text-sm font-bold text-slate-900">{task.dueDate}</span>
+                    <span className="text-sm font-bold text-slate-900">{task.dueDate || 'No date set'}</span>
                   </div>
                 </div>
               </div>
@@ -189,9 +213,8 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                 </h4>
                 <div className="space-y-4">
                   {[
-                    { action: 'Status changed to Review', time: '1h ago' },
-                    { action: 'Added 2 attachments', time: '3h ago' },
-                    { action: 'Task created', time: 'Yesterday' }
+                    { action: 'Task viewed', time: 'Just now' },
+                    { action: 'Created', time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A' }
                   ].map((act, i) => (
                     <div key={i} className="flex gap-3">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />

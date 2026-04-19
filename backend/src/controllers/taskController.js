@@ -189,3 +189,45 @@ exports.assignTask = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+exports.addComment = async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const result = await db.query(
+      'INSERT INTO comments (id, task_id, user_id, content) VALUES ($1, $2, $3, $4) RETURNING *',
+      [uuidv4(), id, userId, content]
+    );
+
+    const comment = result.rows[0];
+    
+    // Log audit
+    await auditService.logAction(userId, 'COMMENT', 'task', id, { content }, req.ip);
+
+    res.status(201).json(comment);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+exports.getComments = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await db.query(
+      `SELECT c.*, u.first_name, u.last_name 
+       FROM comments c 
+       JOIN users u ON c.user_id = u.id 
+       WHERE c.task_id = $1 
+       ORDER BY c.created_at ASC`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

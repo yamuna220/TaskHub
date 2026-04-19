@@ -71,6 +71,18 @@ class ApiService {
     });
   }
 
+  // Comments
+  getComments(taskId: string) {
+    return this.request(`/tasks/${taskId}/comments`);
+  }
+
+  addComment(taskId: string, content: string) {
+    return this.request(`/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
   // Users
   getUsers() {
     return this.request('/users');
@@ -83,6 +95,18 @@ class ApiService {
 
   getAuditStats() {
     return this.request('/audit/stats');
+  }
+
+  // Invitations
+  createInvitation(invitation: { email: string; role: string }) {
+    return this.request('/invitations', {
+      method: 'POST',
+      body: JSON.stringify(invitation),
+    });
+  }
+
+  getInvitation(token: string) {
+    return this.request(`/invitations/${token}`);
   }
 }
 

@@ -14,5 +14,7 @@ router.get('/:id', taskController.getTaskById);
 router.put('/:id', canEditTask(), taskController.updateTask);
 router.delete('/:id', canEditTask(), taskController.deleteTask);
 router.post('/:id/assign', requirePermission('assign_task'), taskController.assignTask);
+router.post('/:id/comments', taskController.addComment);
+router.get('/:id/comments', taskController.getComments);
 
 module.exports = router;

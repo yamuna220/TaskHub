@@ -7,6 +7,10 @@ import { api } from '../lib/api';
 export default function TeamView() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteData, setInviteData] = useState({ email: '', role: 'member' });
+  const [generatedLink, setGeneratedLink] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
     const fetchTeam = async () => {
@@ -33,6 +37,25 @@ export default function TeamView() {
     fetchTeam();
   }, []);
 
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsInviting(true);
+    try {
+      const invite = await api.createInvitation(inviteData);
+      const link = `${window.location.origin}/register?inviteToken=${invite.token}`;
+      setGeneratedLink(link);
+    } catch (err) {
+      console.error('Failed to create invitation', err);
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedLink);
+    alert('Link copied to clipboard!');
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center p-12">
@@ -42,7 +65,75 @@ export default function TeamView() {
   }
 
   return (
-    <div className="p-12 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-12 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
+      {/* Invite Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/20">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative"
+          >
+            <button 
+              onClick={() => { setShowInviteModal(false); setGeneratedLink(''); }}
+              className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full"
+            >
+              <Plus size={20} className="rotate-45 text-slate-400" />
+            </button>
+            <h4 className="text-xl font-bold mb-2">Invite Team Member</h4>
+            <p className="text-slate-500 text-sm mb-6">Send a manual link to your colleague to join this workspace.</p>
+
+            {generatedLink ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">Shared Invitation Link</p>
+                  <code className="text-[10px] break-all text-slate-600 block bg-white p-2 rounded border border-slate-100 mb-4">{generatedLink}</code>
+                  <button 
+                    onClick={copyToClipboard}
+                    className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+                <p className="text-center text-[10px] text-slate-400">Share this link manually via Slack, Email, or WhatsApp.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleInvite} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Work Email</label>
+                  <input 
+                    type="email" 
+                    required 
+                    placeholder="teammate@organization.com"
+                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm"
+                    value={inviteData.email}
+                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Role</label>
+                  <select 
+                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-sm appearance-none"
+                    value={inviteData.role}
+                    onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
+                  >
+                    <option value="admin">Administrator</option>
+                    <option value="member">Team Member</option>
+                    <option value="viewer">Viewer Only</option>
+                  </select>
+                </div>
+                <button 
+                  disabled={isInviting}
+                  className="w-full bg-primary text-white font-bold py-4 rounded-xl mt-4 shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isInviting ? <Loader2 className="animate-spin" size={20} /> : "Generate Invite Link"}
+                </button>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex items-end justify-between">
         <div className="max-w-2xl">
@@ -52,10 +143,6 @@ export default function TeamView() {
             Manage permissions, roles, and monitor team workload across all active projects. 
             Administrators have elevated access to workspace settings and member auditing.
           </p>
-        </div>
-        <div className="flex items-center gap-2 p-1 bg-surface-container-low rounded-xl">
-          <button className="px-4 py-2 bg-white shadow-sm rounded-lg text-sm font-medium text-primary">Grid View</button>
-          <button className="px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors">List View</button>
         </div>
       </div>
 
@@ -71,27 +158,12 @@ export default function TeamView() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-4">
-                {member.avatar ? (
-                  <img 
-                    alt={member.name} 
-                    className="w-14 h-14 rounded-2xl object-cover shadow-sm" 
-                    src={member.avatar}
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl uppercase tracking-tighter ${
-                    member.id === '1' ? 'bg-indigo-100 text-indigo-600' : 'bg-primary text-on-primary'
-                  }`}>
-                    {member.initials}
-                  </div>
-                )}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl uppercase tracking-tighter bg-primary text-on-primary`}>
+                  {member.initials}
+                </div>
                 <div>
                   <h4 className="font-bold text-slate-900 tracking-tight text-lg">{member.name}</h4>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                    member.role === 'Product Owner' ? 'bg-tertiary-container/10 text-tertiary-container' :
-                    member.role === 'Lead Designer' ? 'bg-secondary-container text-on-secondary-container' :
-                    'bg-primary-fixed text-on-primary-fixed-variant'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-fixed text-on-primary-fixed-variant`}>
                     {member.role}
                   </span>
                 </div>
@@ -117,12 +189,6 @@ export default function TeamView() {
                 <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Active Tasks</p>
                 <p className="text-xl font-extrabold text-slate-900">{member.activeTasks}</p>
               </div>
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-slate-200 overflow-hidden">
-                  <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBs8pwiKWMPThXdQ8oQ6QMnh7aFwHsCVC5pRpcxjg3ueGNI1FZSLmBjTQ9gOdmCBFb9Ln-UVPPnV-Eg-wfo2qRZPdkmim1Mt9FLsTdXdwaol3BgqSaAcbcrtfD4166uz-Jcbc6HStnPVD_fL6c3aD9SeY-NgkH0Opz69ogZ7yF-Mb8II-UTXnPY56hLwQ0hU1GOzqGfnjO5o8JQJEyFrVh2eaIiUFc1DU9unZNyP_YuhRUaLGxcZcef_UljsGFG2sJSrHwFsFojapx" referrerPolicy="no-referrer" />
-                </div>
-                <div className="w-8 h-8 rounded-full border-2 border-surface-container-low bg-slate-300 flex items-center justify-center text-[10px] font-bold">+2</div>
-              </div>
             </div>
 
             <button className="mt-auto w-full py-2.5 rounded-lg text-sm font-bold bg-surface-container-high text-on-surface-variant hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
@@ -133,7 +199,10 @@ export default function TeamView() {
         ))}
 
         {/* Add Member Card */}
-        <button className="bg-surface-container-low border-2 border-dashed border-outline-variant/30 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-4 group hover:bg-white hover:border-primary transition-all duration-300">
+        <button 
+          onClick={() => setShowInviteModal(true)}
+          className="bg-surface-container-low border-2 border-dashed border-outline-variant/30 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-4 group hover:bg-white hover:border-primary transition-all duration-300 min-h-[250px]"
+        >
           <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center group-hover:bg-primary/10 transition-colors">
             <Plus size={32} className="text-slate-400 group-hover:text-primary transition-colors" />
           </div>

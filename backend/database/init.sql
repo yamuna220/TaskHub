@@ -1,16 +1,28 @@
 -- Organizations Table
 CREATE TABLE IF NOT EXISTS organizations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE,
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Invitations Table
+CREATE TABLE IF NOT EXISTS invitations (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id VARCHAR(255) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL DEFAULT 'member',
+    token VARCHAR(255) NOT NULL UNIQUE,
+    is_accepted BOOLEAN DEFAULT FALSE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Users Table (with tenant isolation)
 CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id VARCHAR(255) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255),
     first_name VARCHAR(100),
@@ -19,6 +31,9 @@ CREATE TABLE IF NOT EXISTS users (
     oauth_provider VARCHAR(50), -- google, facebook, etc
     oauth_id VARCHAR(255),
     is_active BOOLEAN DEFAULT true,
+    is_verified BOOLEAN DEFAULT false,
+    verification_token VARCHAR(255),
+    verification_token_expiry TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(organization_id, email),
@@ -27,32 +42,60 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Tasks Table (with tenant isolation)
 CREATE TABLE IF NOT EXISTS tasks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id VARCHAR(255) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     status VARCHAR(50) NOT NULL DEFAULT 'pending', -- pending, in_progress, completed
     priority VARCHAR(50) DEFAULT 'medium', -- low, medium, high
-    assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
-    created_by UUID NOT NULL REFERENCES users(id),
+    assigned_to VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+    created_by VARCHAR(255) NOT NULL REFERENCES users(id),
     due_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Comments Table
+CREATE TABLE IF NOT EXISTS comments (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id VARCHAR(255) NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Attachments Table
+CREATE TABLE IF NOT EXISTS attachments (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id VARCHAR(255) NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Audit Log Table
 CREATE TABLE IF NOT EXISTS audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id),
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id VARCHAR(255) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) NOT NULL REFERENCES users(id),
     action VARCHAR(100) NOT NULL, -- CREATE, UPDATE, DELETE
     entity_type VARCHAR(100), -- task, user, organization
-    entity_id UUID,
+    entity_id VARCHAR(255),
     changes JSONB,
     ip_address VARCHAR(45),
     user_agent TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure defaults for existing tables
+ALTER TABLE organizations ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE users ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE tasks ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE invitations ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE comments ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE attachments ALTER COLUMN id SET DEFAULT gen_random_uuid();
 
 -- Permissions Table (for RBAC)
 CREATE TABLE IF NOT EXISTS role_permissions (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, ShieldCheck, History, Mail, Lock, Eye, ArrowRight, Github, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, History, Mail, Lock, Eye, EyeOff, ArrowRight, Github, AlertTriangle } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface LoginViewProps {
@@ -11,6 +11,7 @@ interface LoginViewProps {
 export default function LoginView({ onLogin, onSwitchToRegister }: LoginViewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -150,13 +151,21 @@ export default function LoginView({ onLogin, onSwitchToRegister }: LoginViewProp
                 <Lock className="text-outline-variant group-focus-within:text-primary transition-colors" size={20} />
               </div>
               <input 
-                className="w-full pl-12 pr-4 py-4 bg-surface-container-low border-none rounded-xl text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
+                className="w-full pl-12 pr-12 py-4 bg-surface-container-low border-none rounded-xl text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all font-medium" 
                 placeholder="Password" 
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-outline-variant hover:text-primary transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
 

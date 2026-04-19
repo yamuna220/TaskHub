@@ -27,6 +27,7 @@ app.use('/auth', require('./routes/authRoutes'));
 app.use('/tasks', require('./routes/taskRoutes'));
 app.use('/users', require('./routes/userRoutes'));
 app.use('/audit', require('./routes/auditRoutes'));
+app.use('/invitations', require('./routes/invitationRoutes'));
 
 // Health check
 app.get('/health', (req, res) => {

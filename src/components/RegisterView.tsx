@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, ShieldCheck, History, Mail, Lock, User, Building, ArrowRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, History, Mail, Lock, User, Building, ArrowRight, AlertTriangle, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface RegisterViewProps {
@@ -15,12 +15,37 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
     lastName: '',
     organizationName: '',
     organizationDescription: '',
-    role: 'admin'
+    role: 'admin',
+    inviteToken: ''
   });
-  const [verificationToken, setVerificationToken] = useState('');
+  const [invitationInfo, setInvitationInfo] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('inviteToken');
+    if (token) {
+      setFormData(prev => ({ ...prev, inviteToken: token }));
+      fetchInvitation(token);
+    }
+  }, []);
+
+  const fetchInvitation = async (token: string) => {
+    try {
+      const info = await api.getInvitation(token);
+      setInvitationInfo(info);
+      setFormData(prev => ({ 
+        ...prev, 
+        email: info.email, 
+        role: info.role,
+        organizationName: info.organization_name 
+      }));
+    } catch (err: any) {
+      setError('Invalid or expired invitation link.');
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -32,7 +57,6 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
     setIsLoading(true);
     try {
       await api.register(formData);
-      // Skip the success screen and go back to login immediately
       onBackToLogin();
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -40,46 +64,6 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
       setIsLoading(false);
     }
   };
-
-  if (success) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-surface p-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bg-white p-12 rounded-3xl shadow-xl text-center"
-        >
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8">
-            <CheckCircle className="text-primary" size={40} />
-          </div>
-          <h2 className="text-2xl font-bold text-on-surface mb-4">Account Created Successfully!</h2>
-          <p className="text-on-surface-variant mb-10">
-            Your workspace for <span className="font-bold text-on-surface">{formData.email}</span> is ready! 
-            Please use the testing shortcut below to activate your account and get started.
-          </p>
-          
-          <div className="space-y-3 mb-8">
-            <p className="text-xs font-bold text-outline uppercase tracking-widest">Testing shortcut</p>
-            <a 
-              href={`http://localhost:5000/auth/verify-email?token=${verificationToken}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-3 border-2 border-primary/20 rounded-xl text-primary font-bold hover:bg-primary/5 transition-all"
-            >
-              Verify Immediately (Demo)
-            </a>
-          </div>
-
-          <button 
-            onClick={onBackToLogin}
-            className="w-full bg-hero-gradient text-white font-bold py-4 rounded-xl hover:scale-[1.02] transition-all"
-          >
-            Go to Login
-          </button>
-        </motion.div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen flex flex-col md:flex-row bg-surface">
@@ -120,8 +104,12 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
           className="w-full max-w-md bg-white p-8 md:p-12 rounded-3xl shadow-sm"
         >
           <header className="mb-8 text-center md:text-left">
-            <h3 className="text-2xl font-bold text-on-surface tracking-tight mb-2">Create Account</h3>
-            <p className="text-on-surface-variant text-sm">Set up your workspace and get started today.</p>
+            <h3 className="text-2xl font-bold text-on-surface tracking-tight mb-2">
+              {invitationInfo ? `Join ${invitationInfo.organization_name}` : 'Create Account'}
+            </h3>
+            <p className="text-on-surface-variant text-sm">
+              {invitationInfo ? `You have been invited to join the team as a ${invitationInfo.role}.` : 'Set up your workspace and get started today.'}
+            </p>
           </header>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -129,6 +117,13 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
               <div className="bg-error/10 border border-error/20 p-4 rounded-xl flex items-center gap-3 text-error text-sm font-medium">
                 <AlertTriangle size={18} />
                 {error}
+              </div>
+            )}
+            
+            {invitationInfo && (
+              <div className="bg-primary/5 border border-primary/10 p-4 rounded-xl flex items-center gap-3 text-primary text-sm font-medium">
+                <CheckCircle size={18} />
+                Joining as {invitationInfo.email}
               </div>
             )}
             
@@ -173,6 +168,7 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                disabled={!!invitationInfo}
               />
             </div>
 
@@ -182,45 +178,56 @@ export default function RegisterView({ onBackToLogin }: RegisterViewProps) {
               </div>
               <input 
                 name="password"
-                type="password"
-                className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium" 
-                placeholder="Min 8 chars, uppercase, number & special char" 
+                type={showPassword ? 'text' : 'password'}
+                className="w-full pl-11 pr-11 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium" 
+                placeholder="Password (Min 8 chars)" 
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Building className="text-outline-variant group-focus-within:text-primary transition-colors" size={18} />
-              </div>
-              <input 
-                name="organizationName"
-                className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium" 
-                placeholder="Organization Name" 
-                value={formData.organizationName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <ShieldCheck className="text-outline-variant group-focus-within:text-primary transition-colors" size={18} />
-              </div>
-              <select 
-                name="role"
-                className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium appearance-none focus:ring-2 focus:ring-primary/20" 
-                value={formData.role}
-                onChange={handleChange}
-                required
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-outline-variant hover:text-primary transition-colors"
               >
-                <option value="admin">System Admin</option>
-                <option value="member">Team Member</option>
-                <option value="viewer">Viewer Only</option>
-              </select>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
+
+            {!invitationInfo && (
+              <>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Building className="text-outline-variant group-focus-within:text-primary transition-colors" size={18} />
+                  </div>
+                  <input 
+                    name="organizationName"
+                    className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium" 
+                    placeholder="Organization Name" 
+                    value={formData.organizationName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <ShieldCheck className="text-outline-variant group-focus-within:text-primary transition-colors" size={18} />
+                  </div>
+                  <select 
+                    name="role"
+                    className="w-full pl-11 pr-4 py-3 bg-surface-container-low border-none rounded-xl text-sm font-medium appearance-none focus:ring-2 focus:ring-primary/20" 
+                    value={formData.role}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="admin">System Admin</option>
+                    <option value="member">Team Member</option>
+                    <option value="viewer">Viewer Only</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             <button 
               type="submit"
