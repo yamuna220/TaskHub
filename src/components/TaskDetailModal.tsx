@@ -64,6 +64,19 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!task || !window.confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await api.deleteTask(task.id);
+      onClose();
+      // Force refresh by reloading or calling a refresh handler if provided
+      window.location.reload(); 
+    } catch (err) {
+      console.error('Failed to delete task', err);
+      alert('Failed to delete task');
+    }
+  };
+
   if (!task) return null;
 
   return (
@@ -86,14 +99,24 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
           {/* Header */}
           <header className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-surface-container-low/30">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase tracking-widest">{task.id}</span>
+              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase tracking-widest">{task.id.slice(0, 8)}</span>
               <div className="w-1 h-1 rounded-full bg-slate-300" />
-              <span className="text-sm font-medium text-slate-500">{task.project}</span>
+              <span className="text-sm font-medium text-slate-500">Task Details</span>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                <MoreVertical size={20} className="text-slate-400" />
-              </button>
+              <div className="relative group/menu">
+                <button className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <MoreVertical size={20} className="text-slate-400" />
+                </button>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 hidden group-hover/menu:block z-50">
+                   <button 
+                    onClick={handleDeleteTask}
+                    className="w-full text-left px-4 py-3 text-sm text-error font-bold hover:bg-error/5 transition-colors rounded-xl"
+                   >
+                     Delete Task
+                   </button>
+                </div>
+              </div>
               <button 
                 onClick={onClose}
                 className="p-2 hover:bg-slate-100 rounded-full transition-colors"
@@ -109,14 +132,14 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
               <section>
                 <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 mb-4">{task.title}</h2>
                 <p className="text-slate-600 leading-relaxed">
-                  {task.description || "No description provided for this task. Please add details to help the assignee understand the requirements and scope of work."}
+                  {task.description || "No description provided. Add details to clarify task requirements."}
                 </p>
               </section>
 
               <section className="space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <MessageSquare size={14} />
-                  Comments ({comments.length})
+                  Collaboration ({comments.length})
                 </h3>
                 <div className="space-y-6">
                   {loadingComments ? (
@@ -125,13 +148,13 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
                     </div>
                   ) : comments.length > 0 ? comments.map((comment, i) => (
                     <div key={i} className="flex gap-4">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
                         {comment.first_name[0]}{comment.last_name ? comment.last_name[0] : ''}
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-slate-900">{comment.first_name} {comment.last_name}</span>
-                          <span className="text-[10px] text-slate-400">{new Date(comment.created_at).toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400">{new Date(comment.created_at).toLocaleTimeString()}</span>
                         </div>
                         <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-2xl rounded-tl-none">{comment.content}</p>
                       </div>
@@ -163,45 +186,41 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
             <div className="flex-1 bg-surface-container-low/20 p-8 space-y-8">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Status</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Status</label>
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
-                    task.status === 'In Progress' || task.status === 'in_progress' ? 'bg-indigo-50 border-indigo-100 text-primary' :
-                    task.status === 'Review' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                    task.status === 'Done' || task.status === 'completed' ? 'bg-green-50 border-green-100 text-green-700' :
+                    task.status?.toLowerCase().includes('progress') ? 'bg-indigo-50 border-indigo-100 text-primary' :
+                    task.status?.toLowerCase().includes('done') || task.status?.toLowerCase().includes('completed') ? 'bg-green-50 border-green-100 text-green-700' :
                     'bg-white border-slate-100 text-slate-600'
                   }`}>
-                    {task.status === 'Done' || task.status === 'completed' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
-                    <span className="text-sm font-bold">{task.status}</span>
+                    {task.status?.toLowerCase().includes('done') ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                    <span className="text-sm font-bold">{task.status || 'To Do'}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Priority</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Task Priority</label>
                   <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
-                    task.priority === 'High' ? 'bg-red-50 border-red-100 text-error' :
-                    task.priority === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                    task.priority?.toLowerCase() === 'high' ? 'bg-error/5 border-error/10 text-error' :
                     'bg-white border-slate-100 text-slate-600'
                   }`}>
                     <AlertCircle size={16} />
-                    <span className="text-sm font-bold">{task.priority}</span>
+                    <span className="text-sm font-bold">{task.priority || 'Medium'}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Assignee</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Assigned To</label>
                   <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                      {task.assignee?.name?.[0] || 'U'}
-                    </div>
-                    <span className="text-sm font-bold text-slate-900">{task.assignee?.name || 'Unassigned'}</span>
+                    <User size={18} className="text-slate-400 ml-1" />
+                    <span className="text-sm font-bold text-slate-900">{task.assignee_name || 'Unassigned'}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Due Date</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Target Date</label>
                   <div className="flex items-center gap-3 p-2 bg-white rounded-xl border border-slate-100">
-                    <Calendar size={18} className="text-slate-400" />
-                    <span className="text-sm font-bold text-slate-900">{task.dueDate || 'No date set'}</span>
+                    <Calendar size={18} className="text-slate-400 ml-1" />
+                    <span className="text-sm font-bold text-slate-900">{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'Flexible'}</span>
                   </div>
                 </div>
               </div>
@@ -209,21 +228,16 @@ export default function TaskDetailModal({ task, onClose }: TaskDetailModalProps)
               <div className="pt-8 border-t border-slate-100">
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
                   <History size={14} />
-                  Recent Activity
+                  Task Lifecycle
                 </h4>
                 <div className="space-y-4">
-                  {[
-                    { action: 'Task viewed', time: 'Just now' },
-                    { action: 'Created', time: task.created_at ? new Date(task.created_at).toLocaleDateString() : 'N/A' }
-                  ].map((act, i) => (
-                    <div key={i} className="flex gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium text-slate-700">{act.action}</p>
-                        <p className="text-[10px] text-slate-400">{act.time}</p>
-                      </div>
+                  <div className="flex gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 font-mono">Created</p>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{task.created_at ? new Date(task.created_at).toLocaleString() : 'Just now'}</p>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>

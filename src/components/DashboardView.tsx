@@ -36,15 +36,20 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
       try {
         const tasks = await api.getTasks();
         const total = tasks.length;
-        const completed = tasks.filter((t: any) => t.status === 'completed' || t.status === 'Done').length;
-        const inProgress = tasks.filter((t: any) => t.status === 'in_progress' || t.status === 'In Progress').length;
-        const pending = tasks.filter((t: any) => t.status === 'pending' || t.status === 'To Do').length;
+        
+        const isDone = (s: string) => s?.toLowerCase() === 'done' || s?.toLowerCase() === 'completed';
+        const isProgress = (s: string) => s?.toLowerCase().includes('progress');
+        const isTodo = (s: string) => s?.toLowerCase() === 'pending' || s?.toLowerCase() === 'to do' || s?.toLowerCase() === 'todo';
+
+        const completed = tasks.filter((t: any) => isDone(t.status)).length;
+        const inProgress = tasks.filter((t: any) => isProgress(t.status)).length;
+        const pending = tasks.filter((t: any) => isTodo(t.status)).length;
 
         setStats([
-          { label: 'Total Tasks', value: total.toString(), change: '+5%', trend: 'up', icon: ListTodo, color: 'primary' },
-          { label: 'Completed', value: completed.toString(), change: 'Steady', trend: 'neutral', icon: CheckCircle2, color: 'green' },
-          { label: 'In Progress', value: inProgress.toString(), change: '+2%', trend: 'up', icon: Clock, color: 'amber' },
-          { label: 'Pending', value: pending.toString(), change: '-1%', trend: 'down', icon: AlertTriangle, color: 'error' },
+          { label: 'Total Tasks', value: total.toString(), change: 'Live', trend: 'neutral', icon: ListTodo, color: 'primary' },
+          { label: 'Completed', value: completed.toString(), change: 'Live', trend: 'neutral', icon: CheckCircle2, color: 'green' },
+          { label: 'In Progress', value: inProgress.toString(), change: 'Live', trend: 'neutral', icon: Clock, color: 'amber' },
+          { label: 'Pending', value: pending.toString(), change: 'Live', trend: 'neutral', icon: AlertTriangle, color: 'error' },
         ]);
 
         // Dynamically update Kanban columns
@@ -53,19 +58,19 @@ export default function DashboardView({ user, onNewTask }: { user: any, onNewTas
             title: 'To Do', 
             count: pending, 
             color: 'slate', 
-            tasks: tasks.filter((t: any) => t.status === 'pending' || t.status === 'To Do') 
+            tasks: tasks.filter((t: any) => isTodo(t.status)) 
           },
           { 
             title: 'In Progress', 
             count: inProgress, 
             color: 'amber', 
-            tasks: tasks.filter((t: any) => t.status === 'in_progress' || t.status === 'In Progress') 
+            tasks: tasks.filter((t: any) => isProgress(t.status)) 
           },
           { 
             title: 'Done', 
             count: completed, 
             color: 'green', 
-            tasks: tasks.filter((t: any) => t.status === 'completed' || t.status === 'Done') 
+            tasks: tasks.filter((t: any) => isDone(t.status)) 
           }
         ]);
       } catch (err) {
