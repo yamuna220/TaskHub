@@ -6,6 +6,12 @@ class PermissionService {
    */
   async hasPermission(userId, permission) {
     try {
+      // First check if user is admin - admins have all permissions
+      const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+      if (userResult.rowCount > 0 && userResult.rows[0].role === 'admin') {
+        return true;
+      }
+
       const result = await db.query(
         `SELECT rp.permission FROM role_permissions rp
          INNER JOIN users u ON u.role = rp.role

@@ -226,7 +226,7 @@ export default function TeamView() {
                   Done
                 </button>
               </div>
-            ) : (
+              ) : (
               <form onSubmit={handleInvite} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Email Address</label>
@@ -251,6 +251,12 @@ export default function TeamView() {
                     <option value="admin">Admin (Full Access)</option>
                   </select>
                 </div>
+                {inviteStatus === 'error' && (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 text-sm font-medium">
+                    <AlertCircle size={18} />
+                    Failed to send invite. You may not have permission or the email already has an active invite.
+                  </div>
+                )}
                 <button 
                   type="submit"
                   disabled={isSending}
@@ -258,6 +264,7 @@ export default function TeamView() {
                 >
                   {isSending ? <Loader2 size={20} className="animate-spin" /> : <Mail size={20} />}
                   {isSending ? 'Sending Invitation...' : 'Send Invitation Email'}
+
                 </button>
               </form>
             )}
