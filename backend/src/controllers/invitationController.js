@@ -19,15 +19,19 @@ exports.createInvitation = async (req, res) => {
     );
 
     // Send the email automatically
+    let mailSent = false;
     try {
-      await emailService.sendInvitationEmail(email, token, orgName);
+      mailSent = await emailService.sendInvitationEmail(email, token, orgName);
     } catch (mailErr) {
       console.error('Mail failed but invitation created', mailErr);
     }
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json({
+      ...result.rows[0],
+      mailSent
+    });
   } catch (err) {
-    console.error(err);
+    console.error('CRITICAL INVITE ERROR:', err);
     res.status(500).json({ error: 'Failed to create invitation' });
   }
 };

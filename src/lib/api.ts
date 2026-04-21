@@ -88,6 +88,13 @@ class ApiService {
     return this.request('/users');
   }
 
+  updateUserRole(id: string, data: { role: string }) {
+    return this.request(`/users/${id}/role`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Audit
   getAuditLogs() {
     return this.request('/audit/logs');

@@ -162,12 +162,29 @@ class EmailService {
       </div>
     `;
 
-    return this.transporter.sendMail({
-      from: `"${process.env.SMTP_FROM_NAME || 'TaskHub Pro'}" <${process.env.SMTP_FROM_EMAIL || 'no-reply@taskhub.pro'}>`,
-      to: email,
-      subject: `Invite: Join ${orgName} on TaskHub Pro`,
-      html: htmlContent
-    });
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"${process.env.SMTP_FROM_NAME || 'TaskHub Pro'}" <${process.env.SMTP_FROM_EMAIL || 'no-reply@taskhub.pro'}>`,
+        to: email,
+        subject: `Invite: Join ${orgName} on TaskHub Pro`,
+        html: htmlContent
+      });
+
+      console.log('\n' + '='.repeat(60));
+      console.log('🚀  INVITATION EMAIL SENT!');
+      console.log('To: ' + email);
+      
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log('🔗  VIEW EMAIL: ' + previewUrl);
+      }
+      console.log('='.repeat(60) + '\n');
+      
+      return true;
+    } catch (err) {
+      console.error('❌ Failed to send invitation email:', err);
+      return false;
+    }
   }
 }
 

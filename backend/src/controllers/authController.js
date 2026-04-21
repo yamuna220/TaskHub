@@ -14,7 +14,8 @@ const registerSchema = Joi.object({
   lastName: Joi.string().optional(),
   organizationName: Joi.string().optional(),
   organizationDescription: Joi.string().allow('', null).optional(),
-  role: Joi.string().valid('admin', 'member', 'viewer').optional()
+  role: Joi.string().valid('admin', 'member', 'viewer').optional(),
+  inviteToken: Joi.string().allow('', null).optional()
 });
 
 const loginSchema = Joi.object({
